@@ -1,20 +1,17 @@
-# make build #-> Just compile contracts
-# make static_analyze #-> Only run static analyzers (Slither/Aderyn/Forge coverage)
-# make formal_verification #-> Only run symbolic execution tools (Manticore/Mythril)
-# make fuzz #-> Only run fuzzer (Echidna)
-# make clean #-> Clean build artifacts and reports
-# make format #-> Format code 
-#----##----##----##----##----##----##----##----##----##----##----##----##----##----##----##----##----##----##----#
-.PHONY: all build static_analyze formal_verification fuzz clean format
+.PHONY: all build static_analyze symbolic_exec fuzz clean format init
+
 SOLC_VERSION := 0.7.6
 REPORT_DIR := reports
-CONTRACT := src/BBot.sol  # for formal verification
+CONTRACT := src/BBot.sol
 
-all: build static_analyze formal_verification
+# Master Target
+all: build static_analyze symbolic_exec fuzz
 
+# Compile contracts using Foundry
 build:
 	@forge build
 
+# Run static analyzers
 static_analyze:
 	@mkdir -p ${REPORT_DIR}
 	@echo "Running static analysis..."
@@ -24,42 +21,44 @@ static_analyze:
 	@forge coverage > ${REPORT_DIR}/coverage.md || true
 	@echo "Static analysis reports saved to ${REPORT_DIR}/"
 
-formal_verification:
+# Symbolic execution (Mythril + Manticore)
+symbolic_exec:
 	@mkdir -p ${REPORT_DIR}
 	@echo "Running symbolic execution..."
-##	manticore
-#	@docker run --rm --platform linux/amd64 \
-		-v ${PWD}:/workdir \
-		-e SOLC_VERSION=${SOLC_VERSION} \
-		trailofbits/manticore:0.3.7 \
-		sh -c "solc-select install ${SOLC_VERSION} && \
-			solc-select use ${SOLC_VERSION} && \
-			manticore /workdir/src/BBot.sol --contract ${CONTRACT} \
-			--workspace /workdir/${REPORT_DIR}/mcore_out \
-			--core.procs=1 --core.timeout=300" \
-		2>&1 | tee ${REPORT_DIR}/manticore.log || true
 	@myth analyze ${CONTRACT} > ${REPORT_DIR}/mythril.md || true
-#	@manticore src/*.sol --contract ${CONTRACT} 2>&1 | tee ${REPORT_DIR}/manticore.log || true
-	@echo "Symbolic execution results saved to ${REPORT_DIR}/"
+## Uncomment Manticore if needed
+#	@docker run --rm --platform linux/amd64 \
+#		-v ${PWD}:/workdir \
+#		-e SOLC_VERSION=${SOLC_VERSION} \
+#		trailofbits/manticore:0.3.7 \
+#		sh -c "solc-select install ${SOLC_VERSION} && \
+#			solc-select use ${SOLC_VERSION} && \
+#			manticore /workdir/${CONTRACT} --contract ${CONTRACT} \
+#			--workspace /workdir/${REPORT_DIR}/mcore_out \
+#			--core.procs=1 --core.timeout=300" \
+#		2>&1 | tee ${REPORT_DIR}/manticore.log || true
+	@echo "Symbolic execution reports saved to ${REPORT_DIR}/"
 
+# Run fuzzing with Echidna
 fuzz:
 	@mkdir -p ${REPORT_DIR}
 	@echo "Running fuzzer..."
 	@echidna-test . --contract ${CONTRACT} --config echidna.yml > ${REPORT_DIR}/echidna.md || true
 	@echo "Fuzzing report saved to ${REPORT_DIR}/echidna.md"
 
+# Clean artifacts and reports
 clean:
 	@forge clean
-	@rm -rf ${REPORT_DIR} .fmtcache mcore_* 
+	@rm -rf ${REPORT_DIR} .fmtcache mcore_*
 
+# Format contracts
 format:
 	@forge fmt
 
+# Initialize new Foundry project
 init:
 	@forge init --force
 	@rm -rf src test script
 	@mkdir -p src test script
 	@echo "[profile.default]\nsolc = '${SOLC_VERSION}'" > foundry.toml
 	@forge install foundry-rs/forge-std --no-commit
-
-
