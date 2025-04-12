@@ -61,4 +61,7 @@ init:
 	@rm -rf src test script
 	@mkdir -p src test script
 	@echo "[profile.default]\nsolc = '${SOLC_VERSION}'" > foundry.toml
+#	libs	
 	@forge install foundry-rs/forge-std --no-commit
+#	@forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
+	@forge install OpenZeppelin/openzeppelin-contracts --no-commit
