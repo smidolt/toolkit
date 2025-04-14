@@ -16,6 +16,7 @@ static_analyze:
 	@mkdir -p ${REPORT_DIR}
 	@echo "Running static analysis..."
 	@slither . --checklist > ${REPORT_DIR}/slither.md || true
+	@slither . --print function-summary &> ${REPORT_DIR}/function-summary.md || true
 	@aderyn . || true
 	@mv report.md ${REPORT_DIR}/aderyn.md || true
 	@forge coverage > ${REPORT_DIR}/coverage.md || true
